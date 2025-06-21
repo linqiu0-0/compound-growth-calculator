@@ -2,3 +2,4 @@ streamlit==1.46.0
 pandas==2.3.0
 numpy==2.0.2
 numpy-financial==1.0.0
+matplotlib==3.8.4
