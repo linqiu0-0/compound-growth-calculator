@@ -1,111 +1,8 @@
-import matplotlib.pyplot as plt
 import streamlit as st
+import matplotlib.pyplot as plt
 import altair as alt
-
-def compound_growth_with_visualization(
-    monthly_plan=[(1, 36, 5000)],        # [(start_month, end_month, monthly_contribution)]
-    roth_ira_cap=7_000,
-    roth_ira_enabled=True,
-    k401_cap=23_000,
-    k401_enabled=True,
-    simulation_months=36,
-    roth_ira_return=0.10,
-    k401_return=0.10,
-    dca_return=0.10,
-    stock_return=0.10,
-    dca_ratio=0.60,
-    stock_ratio=0.40,
-    inflation_rate=0.025,
-    initial_roth=0,
-    initial_401k=0,
-    initial_dca=0,
-    initial_stock=0,
-):
-    """
-    Simulates and visualizes compound investment growth with different return rates for each investment type.
-    """
-    # Convert annual returns to monthly returns
-    roth_ira_monthly = (1 + roth_ira_return) ** (1 / 12) - 1
-    k401_monthly = (1 + k401_return) ** (1 / 12) - 1
-    dca_monthly = (1 + dca_return) ** (1 / 12) - 1
-    stock_monthly = (1 + stock_return) ** (1 / 12) - 1
-    
-    timeline = [float(x) for x in range(simulation_months + 1)]
-
-    total_value = [initial_roth + initial_401k + initial_dca + initial_stock]
-    roth_ira_value = [initial_roth]
-    k401_value = [initial_401k]
-    self_dca_value = [initial_dca]
-    self_stock_value = [initial_stock]
-    
-    roth_ira_contrib = 0
-    k401_contrib = 0
-    
-    roth_accum = initial_roth
-    k401_accum = initial_401k
-    
-    for month in range(1, simulation_months + 1):
-        # Determine current monthly contribution
-        monthly_contribution = 0
-        for start, end, amt in monthly_plan:
-            if start <= month <= end:
-                monthly_contribution = amt
-                break
-
-        # Allocate contributions
-        roth_ira_monthly_contrib = min(monthly_contribution, roth_ira_cap / 12) if roth_ira_enabled else 0
-        remaining_after_roth = monthly_contribution - roth_ira_monthly_contrib
-        
-        k401_monthly_contrib = min(remaining_after_roth, k401_cap / 12) if k401_enabled else 0
-        remaining_after_401k = remaining_after_roth - k401_monthly_contrib
-        
-        dca_monthly_contrib = remaining_after_401k * dca_ratio
-        stock_monthly_contrib = remaining_after_401k * stock_ratio
-
-        # Compound growth with different returns for each investment type
-        roth_ira_contrib = roth_ira_contrib * (1 + roth_ira_monthly) + roth_ira_monthly_contrib
-        k401_contrib = k401_contrib * (1 + k401_monthly) + k401_monthly_contrib
-        dca_total = self_dca_value[-1] * (1 + dca_monthly) + dca_monthly_contrib
-        stock_total = self_stock_value[-1] * (1 + stock_monthly) + stock_monthly_contrib
-
-        roth_ira_value.append(roth_ira_contrib)
-        k401_value.append(k401_contrib)
-        self_dca_value.append(dca_total)
-        self_stock_value.append(stock_total)
-        
-        total_value.append(roth_ira_contrib + k401_contrib + dca_total + stock_total)
-
-    # Ensure all data is in standard Python types
-    timeline = list(range(simulation_months + 1))
-    total_value = [float(x) for x in total_value]
-    roth_ira_value = [float(x) for x in roth_ira_value]
-    k401_value = [float(x) for x in k401_value]
-    dca_value = [float(x) for x in self_dca_value]
-    stock_value = [float(x) for x in self_stock_value]
-
-    # Calculate inflation-adjusted values
-    inflation_monthly = (1 + inflation_rate) ** (1 / 12) - 1
-    inflation_adjustment = [(1 + inflation_monthly) ** month for month in timeline]
-    
-    total_adjusted = [total_value[i] / inflation_adjustment[i] for i in range(len(total_value))]
-    roth_adjusted = [roth_ira_value[i] / inflation_adjustment[i] for i in range(len(roth_ira_value))]
-    k401_adjusted = [k401_value[i] / inflation_adjustment[i] for i in range(len(k401_value))]
-    dca_adjusted = [dca_value[i] / inflation_adjustment[i] for i in range(len(dca_value))]
-    stock_adjusted = [stock_value[i] / inflation_adjustment[i] for i in range(len(stock_value))]
-
-    return {
-        "Month": timeline,
-        "Total": total_value,
-        "Roth IRA": roth_ira_value,
-        "401(k)": k401_value,
-        "ETF DCA": dca_value,
-        "Stock Picks": stock_value,
-        "Total_Adjusted": total_adjusted,
-        "Roth IRA_Adjusted": roth_adjusted,
-        "401(k)_Adjusted": k401_adjusted,
-        "ETF DCA_Adjusted": dca_adjusted,
-        "Stock Picks_Adjusted": stock_adjusted,
-    }
+from models.simulation import compound_growth_with_visualization
+from utils.irr import calculate_irr
 
 # -----------------------------------------------------------
 # 🖼  Page config — run only once per session
@@ -124,110 +21,6 @@ def _load_libs():
     return plt, alt
 
 plt, alt = _load_libs()
-
-# -----------------------------------------------------------
-# 📈  Core simulation logic (unchanged)
-# -----------------------------------------------------------
-def compound_growth_with_visualization(
-    monthly_plan=[(1, 36, 5000)],        # [(start_month, end_month, monthly_contribution)]
-    roth_ira_cap=7_000,
-    roth_ira_enabled=True,
-    k401_cap=23_000,
-    k401_enabled=True,
-    simulation_months=36,
-    roth_ira_return=0.10,
-    k401_return=0.10,
-    dca_return=0.10,
-    stock_return=0.10,
-    dca_ratio=0.60,
-    stock_ratio=0.40,
-    inflation_rate=0.025,
-    initial_roth=0,
-    initial_401k=0,
-    initial_dca=0,
-    initial_stock=0,
-):
-    # Convert annual return → monthly
-    r_m = (1 + roth_ira_return) ** (1 / 12) - 1
-    k_m = (1 + k401_return) ** (1 / 12) - 1
-    d_m = (1 + dca_return) ** (1 / 12) - 1
-    s_m = (1 + stock_return) ** (1 / 12) - 1
-
-    timeline      = list(range(simulation_months + 1))
-    total_value   = [initial_roth + initial_401k + initial_dca + initial_stock]
-    roth_value    = [initial_roth]
-    k401_value    = [initial_401k]
-    dca_value     = [initial_dca]
-    stock_value   = [initial_stock]
-
-    roth_accum = initial_roth
-    k401_accum = initial_401k
-
-    for m in range(1, simulation_months + 1):
-        # Which monthly contribution applies?
-        contrib = next((amt for start, end, amt in monthly_plan if start <= m <= end), 0)
-
-        # Split into account buckets
-        roth_contrib  = min(contrib, roth_ira_cap / 12) if roth_ira_enabled else 0
-        remain_after_roth = contrib - roth_contrib
-
-        k401_contrib  = min(remain_after_roth, k401_cap / 12) if k401_enabled else 0
-        remain        = remain_after_roth - k401_contrib
-
-        dca_contrib   = remain * dca_ratio
-        stock_contrib = remain * stock_ratio
-
-        # Compound each bucket
-        roth_accum  = roth_accum  * (1 + r_m) + roth_contrib
-        k401_accum  = k401_accum  * (1 + k_m) + k401_contrib
-        dca_next    = dca_value[-1]   * (1 + d_m) + dca_contrib
-        stock_next  = stock_value[-1] * (1 + s_m) + stock_contrib
-
-        # Save series
-        roth_value.append(roth_accum)
-        k401_value.append(k401_accum)
-        dca_value.append(dca_next)
-        stock_value.append(stock_next)
-        total_value.append(roth_accum + k401_accum + dca_next + stock_next)
-
-    # Ensure all data is in standard Python types
-    timeline = list(range(simulation_months + 1))
-    total_value = [float(x) for x in total_value]
-    roth_value = [float(x) for x in roth_value]
-    k401_value = [float(x) for x in k401_value]
-    dca_value = [float(x) for x in dca_value]
-    stock_value = [float(x) for x in stock_value]
-
-    # Calculate inflation-adjusted values
-    inflation_monthly = (1 + inflation_rate) ** (1 / 12) - 1
-    inflation_adjustment = [(1 + inflation_monthly) ** month for month in timeline]
-    
-    total_adjusted = [total_value[i] / inflation_adjustment[i] for i in range(len(total_value))]
-    roth_adjusted = [roth_value[i] / inflation_adjustment[i] for i in range(len(roth_value))]
-    k401_adjusted = [k401_value[i] / inflation_adjustment[i] for i in range(len(k401_value))]
-    dca_adjusted = [dca_value[i] / inflation_adjustment[i] for i in range(len(dca_value))]
-    stock_adjusted = [stock_value[i] / inflation_adjustment[i] for i in range(len(stock_value))]
-
-    return {
-        "Month": timeline,
-        "Total": total_value,
-        "Roth IRA": roth_value,
-        "401(k)": k401_value,
-        "ETF DCA": dca_value,
-        "Stock Picks": stock_value,
-        "Total_Adjusted": total_adjusted,
-        "Roth IRA_Adjusted": roth_adjusted,
-        "401(k)_Adjusted": k401_adjusted,
-        "ETF DCA_Adjusted": dca_adjusted,
-        "Stock Picks_Adjusted": stock_adjusted,
-    }
-
-# -----------------------------------------------------------
-# 🏎  Cached wrapper so the sim runs only when inputs change
-# -----------------------------------------------------------
-@st.cache_data(show_spinner="Running simulation…")
-def run_sim(**kwargs):
-    return compound_growth_with_visualization(**kwargs)
 
 # -----------------------------------------------------------
 # 🎛  Interactive UI
@@ -340,7 +133,7 @@ def main():
 
     # ---------- Run simulation ----------
     if st.button("🚀 Run Simulation", type="primary", key="main_run_simulation"):
-        data = run_sim(
+        data = compound_growth_with_visualization(
             monthly_plan=monthly_plan,
             roth_ira_cap=roth_cap,
             roth_ira_enabled=enable_roth,
@@ -369,23 +162,74 @@ def main():
             col1, col2, col3, col4 = st.columns(4)
             final_total = data["Total"][-1]
             initial_total = data["Total"][0]
-            growth = final_total - initial_total
-            pct = (growth / initial_total) * 100 if initial_total > 0 else 0
+            total_contributions = data["Total_Contributions"][-1]
+            total_invested = initial_total + total_contributions
+            growth = final_total - total_invested
+            pct = (growth / total_invested) * 100 if total_invested > 0 else 0
             col1.metric("Final Portfolio Value", f"${final_total:,.0f}")
-            col2.metric("Total Growth", f"${growth:,.0f}")
-            col3.metric("Total Return", f"{pct:.1f}%")
-            col4.metric("Years Simulated", sim_years)
+            col2.metric("Initial Balance", f"${initial_total:,.0f}")
+            col3.metric("Total Contributions", f"${total_contributions:,.0f}")
+            col4.metric("Investment Gains", f"${growth:,.0f}")
+            
+            # Additional breakdown
+            st.markdown("---")
+            col1, col2, col3, col4 = st.columns(4)
+            col1.metric("Total Return", f"{pct:.1f}%")
+            col2.metric("Years Simulated", sim_years)
+            col3.metric("CAGR (年化收益率)", f"{((final_total/total_invested)**(1/sim_years)-1)*100:.1f}%" if total_invested > 0 and sim_years > 0 else "0.0%")
+            
+            # Calculate IRR
+            cash_flows = [-initial_total]  # Initial investment (negative)
+            for i in range(1, len(data["Month"])):
+                monthly_contrib = data["Total_Contributions"][i] - data["Total_Contributions"][i-1]
+                cash_flows.append(-monthly_contrib)  # Monthly contributions (negative)
+            cash_flows.append(final_total)  # Final value (positive)
+            
+            # Debug: show cash flow summary
+            total_invested_debug = sum(-cf for cf in cash_flows if cf < 0)
+            final_value_debug = sum(cf for cf in cash_flows if cf > 0)
+            
+            irr = calculate_irr(cash_flows) * 100
+            col4.metric("IRR (内部收益率)", f"{irr:.1f}%")
+                
         
         with tab2:
             col1, col2, col3, col4 = st.columns(4)
             final_total_adj = data["Total_Adjusted"][-1]
             initial_total_adj = data["Total_Adjusted"][0]
-            growth_adj = final_total_adj - initial_total_adj
-            pct_adj = (growth_adj / initial_total_adj) * 100 if initial_total_adj > 0 else 0
+            # For inflation-adjusted, we need to adjust the contributions too
+            inflation_monthly = (1 + inflation_rate) ** (1 / 12) - 1
+            inflation_adjustment_final = (1 + inflation_monthly) ** sim_months
+            total_contributions_adj = total_contributions / inflation_adjustment_final
+            total_invested_adj = initial_total_adj + total_contributions_adj
+            growth_adj = final_total_adj - total_invested_adj
+            pct_adj = (growth_adj / total_invested_adj) * 100 if total_invested_adj > 0 else 0
             col1.metric("Final Portfolio Value (Real)", f"${final_total_adj:,.0f}")
-            col2.metric("Total Growth (Real)", f"${growth_adj:,.0f}")
-            col3.metric("Total Return (Real)", f"{pct_adj:.1f}%")
-            col4.metric("Inflation Rate", f"{inflation_rate*100:.1f}%")
+            col2.metric("Initial Balance (Real)", f"${initial_total_adj:,.0f}")
+            col3.metric("Total Contributions (Real)", f"${total_contributions_adj:,.0f}")
+            col4.metric("Investment Gains (Real)", f"${growth_adj:,.0f}")
+            
+            # Additional breakdown for inflation-adjusted
+            st.markdown("---")
+            col1, col2, col3, col4 = st.columns(4)
+            col1.metric("Total Return (Real)", f"{pct_adj:.1f}%")
+            col2.metric("Inflation Rate", f"{inflation_rate*100:.1f}%")
+            col3.metric("CAGR (年化收益率) (Real)", f"{((final_total_adj/total_invested_adj)**(1/sim_years)-1)*100:.1f}%" if total_invested_adj > 0 and sim_years > 0 else "0.0%")
+            
+            # Calculate IRR for inflation-adjusted values
+            cash_flows_adj = [-initial_total_adj]  # Initial investment (negative, inflation-adjusted)
+            for i in range(1, len(data["Month"])):
+                monthly_contrib_adj = (data["Total_Contributions"][i] - data["Total_Contributions"][i-1]) / ((1 + inflation_monthly) ** i)
+                cash_flows_adj.append(-monthly_contrib_adj)  # Monthly contributions (negative, inflation-adjusted)
+            cash_flows_adj.append(final_total_adj)  # Final value (positive, inflation-adjusted)
+            
+            # Debug: show inflation-adjusted cash flow summary
+            total_invested_adj_debug = sum(-cf for cf in cash_flows_adj if cf < 0)
+            final_value_adj_debug = sum(cf for cf in cash_flows_adj if cf > 0)
+            
+            irr_adj = calculate_irr(cash_flows_adj) * 100
+            col4.metric("IRR (内部收益率) (Real)", f"{irr_adj:.1f}%")
+            
 
         # ---------- Portfolio growth chart ----------
         st.subheader("📈 Portfolio Growth Over Time")
